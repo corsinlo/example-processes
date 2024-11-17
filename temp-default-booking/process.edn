@@ -10,7 +10,7 @@
    [{:name :action/update-protected-data}
     {:name :action/create-pending-booking, :config {:type :time}}
     {:name :action/privileged-set-line-items}],
-   :to :state/preauthorized,
+   :to :state/preauthorized-gift,
    :privileged? true}
     {:name :transition/request-payment,
    :actor :actor.role/customer,
@@ -54,6 +54,16 @@
     {:name :action/stripe-capture-payment-intent}],
    :from :state/preauthorized,
    :to :state/accepted}
+  {:name :transition/accept-gift,
+   :actor :actor.role/provider,
+   :actions [{:name :action/accept-booking}],
+   :from :state/preauthorized-gift,
+   :to :state/accepted-gift}
+  {:name :transition/decline-gift,
+   :actor :actor.role/provider,
+   :actions [{:name :action/decline-booking}],
+   :from :state/preauthorized-gift,
+   :to :state/declined-gift}
   {:name :transition/operator-accept,
    :actor :actor.role/operator,
    :actions
@@ -77,6 +87,16 @@
     {:name :action/decline-booking}],
    :from :state/preauthorized,
    :to :state/declined}
+    {:name :transition/cancel-booking,
+   :actor :actor.role/operator,
+   :actions [{:name :action/cancel-booking}],
+   :from :state/accepted-gift,
+   :to :state/cancelled}
+  {:name :transition/complete-booking,
+   :at {:fn/timepoint [:time/booking-end]},
+   :actions [],
+   :from :state/accepted-gift,
+   :to :state/completed}
   {:name :transition/expire,
    :at
    {:fn/min
@@ -95,7 +115,7 @@
   {:name :transition/complete,
    :at
    {:fn/plus
-    [{:fn/timepoint [:time/booking-end]} {:fn/period ["P2D"]}]},
+    [{:fn/timepoint [:time/booking-end]} {:fn/period ["P1D"]}]},
    :actions [{:name :action/stripe-create-payout}],
    :from :state/accepted,
    :to :state/delivered}
@@ -117,6 +137,11 @@
    :actions [{:name :action/post-review-by-provider}],
    :from :state/delivered,
    :to :state/reviewed-by-provider}
+  {:name :transition/review-1-by-provider-gift,
+   :actor :actor.role/provider,
+   :actions [{:name :action/post-review-by-provider}],
+   :from :state/completed,
+   :to :state/reviewed-by-provider}
   {:name :transition/review-2-by-provider,
    :actor :actor.role/provider,
    :actions
@@ -128,6 +153,11 @@
    :actor :actor.role/customer,
    :actions [{:name :action/post-review-by-customer}],
    :from :state/delivered,
+   :to :state/reviewed-by-customer}
+  {:name :transition/review-1-by-customer-gift,
+   :actor :actor.role/customer,
+   :actions [{:name :action/post-review-by-customer}],
+   :from :state/completed,
    :to :state/reviewed-by-customer}
   {:name :transition/review-2-by-customer,
    :actor :actor.role/customer,
@@ -166,6 +196,10 @@
    :on :transition/accept,
    :to :actor.role/customer,
    :template :booking-accepted-request}
+  {:name :notification/booking-accepted-request-gift,
+   :on :transition/accept-gift,
+   :to :actor.role/customer,
+   :template :booking-accepted-request}
   {:name :notification/booking-operator-accepted-request-to-customer,
    :on :transition/operator-accept,
    :to :actor.role/customer,
@@ -176,6 +210,10 @@
    :template :booking-operator-accepted-request}
   {:name :notification/booking-declined-request,
    :on :transition/decline,
+   :to :actor.role/customer,
+   :template :booking-declined-request}
+  {:name :notification/booking-declined-request-gift,
+   :on :transition/decline-gift,
    :to :actor.role/customer,
    :template :booking-declined-request}
   {:name :notification/booking-operator-declined-request-to-customer,
